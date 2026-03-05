@@ -1,0 +1,35 @@
+# 钉钉群聊 QA 智能分析系统 - 依赖列表
+
+# HTTP 客户端
+aiohttp>=3.9.0
+httpx>=0.25.0
+requests>=2.31.0
+
+# 异步支持
+asyncio>=3.4.3
+
+# 数据处理
+pydantic>=2.5.0
+python-dotenv>=1.0.0
+
+# 钉钉 SDK
+dingtalk-sdk>=1.0.0
+
+# 数据处理
+pandas>=2.0.0
+openpyxl>=3.1.0
+
+# 日志
+loguru>=0.7.0
+
+# 工具库
+rich>=13.7.0
+tenacity>=8.2.0
+python-dateutil>=2.8.0
+
+# 配置管理
+pyyaml>=6.0
+toml>=0.10.2
+
+# 加密
+cryptography>=41.0.0

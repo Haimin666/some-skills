@@ -1,0 +1,26 @@
+# Python 大模型 Skills 使用案例 - 依赖列表
+
+# HTTP 客户端
+aiohttp>=3.9.0
+httpx>=0.25.0
+requests>=2.31.0
+
+# 异步支持
+asyncio>=3.4.3
+
+# 数据处理
+pydantic>=2.5.0
+python-dotenv>=1.0.0
+
+# 图像处理
+Pillow>=10.0.0
+
+# 音频处理
+pydub>=0.25.1
+
+# 文件处理
+aiofiles>=23.2.0
+
+# 工具库
+rich>=13.7.0  # 美化终端输出
+tenacity>=8.2.0  # 重试机制

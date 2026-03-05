@@ -1,51 +1,80 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
 
-# dependencies
-node_modules
-/.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
 
-# testing
-/coverage
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
 
-# next.js
-/.next/
-/out/
+# Logs
+logs/
+*.log
 
-# production
-/build
+# Output
+output/
+*.wav
+*.mp3
+*.png
+*.jpg
+*.jpeg
 
-# misc
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# OS
 .DS_Store
-*.pem
+Thumbs.db
 
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
+# Database
+*.db
+*.sqlite3
 
-# env files (can opt-in for committing if needed)
-.env*
+# Cache
+.cache/
+*.pyc
 
-# vercel
-.vercel
+# Jupyter
+.ipynb_checkpoints/
 
-# typescript
-*.tsbuildinfo
-next-env.d.ts
-local-*
-.claude
-.z-ai-config
-dev.log
-test
-prompt
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
 
-server.log
-# Skills directory
-/skills/
+# Next.js
+.next/
+node_modules/
+bun.lock
+
+# Prisma
+prisma/*.db
