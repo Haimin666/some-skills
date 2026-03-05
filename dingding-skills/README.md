@@ -1,24 +1,32 @@
-# 钉钉群聊 QA 智能分析系统
+# 钉钉群聊 QA 智能分析系统（金融场景版）
 
-基于 **chat-to-qa Skill** 的钉钉群聊数据分析工具，从零散的聊天记录中智能提取问答对并自动分类标签。
+基于 **chat-to-qa Skill** 的钉钉群聊数据分析工具，专为金融场景设计，从零散的聊天记录中智能提取问答对并自动分类标签。
 
 ## 📋 核心功能
 
 ### 1. 获取群聊数据
-- 支持获取钉钉群聊历史消息
-- 自动解析消息内容和发送者信息
+- 获取钉钉群聊历史消息
+- 支持文本、图片、富文本消息
+- 识别发送者角色（客户、技术支持、业务经理等）
 
 ### 2. 智能 QA 提取 (chat-to-qa Skill)
-- **理解上下文**：从零散对话中识别真正的问答
-- **智能合并**：答案可能分散在多条消息中，自动合并
-- **质量过滤**：忽略闲聊、表情等无关内容
-- **自动分类**：系统Bug、数据问题、业务问题、用户问题等
-- **严重级别**：critical、high、medium、low
+- **上下文理解**：从零散对话中识别问答关系
+- **人员角色识别**：区分提问者和回答者
+- **图片信息处理**：支持解析图片内容
+- **金融场景分类**：金融、系统、其他
 
-### 3. 知识库导入
-- 支持 JSON、CSV、Markdown 多格式导出
-- 按分类自动组织
-- 包含完整的标签和元信息
+### 3. 分类标签（金融场景）
+
+| 标签 | 标识 | 说明 | 示例关键词 |
+|------|------|------|-----------|
+| 金融 | finance | 金融业务问题 | 合同、借款、贷款、签署、验证码、银行 |
+| 系统 | system | 系统Bug问题 | 报错、异常、崩溃、超时、初始化 |
+| 其他 | other | 其他问题 | - |
+
+### 4. FastGpt 知识库集成
+- 导出 FastGpt 导入格式
+- 支持直接导入 FastGpt 知识库
+- 多格式导出（JSON、CSV、Markdown）
 
 ## 🚀 快速开始
 
@@ -33,7 +41,18 @@ pip install -r requirements.txt
 
 ```bash
 cp .env.example .env
-# 编辑 .env 文件填入 API 配置
+```
+
+编辑 `.env` 文件：
+```bash
+# 大模型配置
+LLM_API_BASE_URL=https://api.example.com/v1
+LLM_API_KEY=your_api_key
+LLM_MODEL=gpt-4
+
+# FastGpt 配置（可选）
+FASTGPT_API_KEY=your_fastgpt_key
+FASTGPT_DATASET_ID=your_dataset_id
 ```
 
 ### 3. 运行
@@ -44,6 +63,11 @@ python main.py --action all
 
 # 使用真实 API
 python main.py --action all --real
+
+# 导入到 FastGpt
+python main.py --action fastgpt \
+    --fastgpt-key YOUR_KEY \
+    --fastgpt-dataset YOUR_DATASET_ID
 ```
 
 ## 📁 项目结构
@@ -57,110 +81,88 @@ dingding-skills/
 │   └── dingtalk_api.py             # 钉钉 API 封装
 ├── skills/
 │   └── chat-to-qa/                  # chat-to-qa Skill
-│       ├── SKILL.md                 # Skill 定义（含提取规则、分类体系）
+│       ├── SKILL.md                 # Skill 定义
 │       ├── scripts/
-│       │   ├── qa_extractor.py      # QA 提取核心脚本
-│       │   └── knowledge_base_importer.py  # 知识库导入
+│       │   ├── qa_extractor.py      # QA 提取
+│       │   └── fastgpt_importer.py  # FastGpt 导入
 │       ├── templates/
-│       │   └── qa_template.json     # QA 数据模板
+│       │   └── qa_template.json     # QA 模板
 │       └── resources/
-│           └── categories.json      # 分类标签定义
+│           └── categories.json      # 分类定义
 └── output/
     └── knowledge_base/              # 输出目录
-        ├── knowledge_base.json      # 完整知识库
+        ├── qa_full.json             # 完整数据
+        ├── fastgpt_import.json      # FastGpt 导入格式
         ├── knowledge_base.csv       # CSV 格式
         ├── knowledge_base.md        # Markdown 格式
         └── by_category/             # 按分类组织
 ```
 
-## 🔧 chat-to-qa Skill 说明
+## 💡 使用示例
 
-### Skill 功能
+### 示例 1: 金融系统问题
 
-chat-to-qa Skill 是核心技能，用于：
-1. **上下文理解**：理解零散对话的语义，识别真正的问答
-2. **QA 提取**：从聊天记录中提取结构化的问答对
-3. **自动分类**：根据内容自动打上分类标签
-4. **严重级别判断**：评估问题的紧急程度
+**聊天记录：**
+```
+[10:00] 客户A: 上海银行 签署【借款合同】提示：验证码初始化异常
+[10:02] 技术支持: 验证码输错6次会有这个报错提示
+[10:03] 技术支持: 请重试，输入正确验证码就可以了
+```
 
-### 分类标签体系
-
-| 标签 | 标识 | 说明 |
-|------|------|------|
-| 系统Bug | system_bug | 报错、崩溃、功能异常 |
-| 数据问题 | data_issue | 数据错误、缺失、不一致 |
-| 业务问题 | business_issue | 流程、规则、权限问题 |
-| 用户问题 | user_issue | 使用咨询、操作指导 |
-| 功能需求 | feature_request | 新功能建议、改进意见 |
-| 其他 | other | 不属于以上分类 |
-
-### 严重级别
-
-| 级别 | 说明 |
-|------|------|
-| critical | 系统崩溃、核心功能不可用 |
-| high | 功能异常、影响业务 |
-| medium | 一般问题、有临时方案 |
-| low | 咨询类、建议类 |
-
-## 📊 输出示例
-
-### JSON 格式
-
+**提取 QA：**
 ```json
 {
-  "qa_list": [
-    {
-      "id": "qa_0001",
-      "question": "打开订单列表页面时出现500错误怎么办？",
-      "answer": "500错误是服务器临时故障导致的。可以尝试刷新页面或联系技术支持。",
-      "category": "system_bug",
-      "category_name": "系统Bug",
-      "confidence": 0.95,
-      "context": "用户访问订单列表功能时遇到服务器错误",
-      "keywords": ["500错误", "订单列表"],
-      "severity": "high"
-    }
-  ],
-  "statistics": {
-    "total_count": 10,
-    "by_category": {
-      "system_bug": 2,
-      "user_issue": 5,
-      "business_issue": 3
-    }
-  }
+  "question": "上海银行签署借款合同提示：验证码初始化异常怎么办？",
+  "answer": "验证码输错6次后会出现此报错提示。请重新尝试，输入正确的验证码即可。",
+  "tags": ["金融", "系统"],
+  "category": "finance"
 }
 ```
 
-## 🔒 配置说明
+### 示例 2: 纯金融问题
 
-### 环境变量
-
-```bash
-# 钉钉配置
-DINGTALK_APP_KEY=your_app_key
-DINGTALK_APP_SECRET=your_app_secret
-
-# 大模型配置
-LLM_API_BASE_URL=https://api.example.com/v1
-LLM_API_KEY=your_api_key
-LLM_MODEL=gpt-4
+**聊天记录：**
+```
+[14:00] 客户B: 请问借款合同签署后多久可以放款？
+[14:01] 业务经理: 正常情况下1-3个工作日放款
 ```
 
-## 📝 使用场景
+**提取 QA：**
+```json
+{
+  "question": "借款合同签署后多久可以放款？",
+  "answer": "正常情况下，合同签署完成后1-3个工作日放款。",
+  "tags": ["金融"],
+  "category": "finance"
+}
+```
 
-1. **智能客服知识库构建**
-   - 从群聊历史自动提取常见问题解答
-   - 持续更新知识库
+## 📊 FastGpt 导入格式
 
-2. **问题趋势分析**
-   - 统计各类问题分布
-   - 发现高频问题
+```json
+{
+  "list": [
+    {
+      "q": "问题内容",
+      "a": "答案内容",
+      "tags": ["金融", "系统"]
+    }
+  ]
+}
+```
 
-3. **服务质量改进**
-   - 识别未解决的问题
-   - 优化回答质量
+## 🔧 命令说明
+
+| 命令 | 说明 |
+|------|------|
+| `--action fetch` | 获取群聊数据 |
+| `--action extract` | 提取 QA |
+| `--action export` | 导出知识库 |
+| `--action fastgpt` | 导入 FastGpt |
+| `--action all` | 完整流程 |
+| `--real` | 使用真实 API |
+| `--fastgpt-key` | FastGpt API Key |
+| `--fastgpt-dataset` | FastGpt Dataset ID |
 
 ## 📄 License
 

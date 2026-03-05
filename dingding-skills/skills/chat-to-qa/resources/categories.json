@@ -1,38 +1,30 @@
 {
   "categories": {
-    "system_bug": {
-      "name": "系统Bug",
-      "description": "系统功能异常、报错、崩溃等问题",
-      "keywords": ["报错", "错误", "崩溃", "异常", "bug", "500", "404", "无法", "失败", "卡住", "闪退", "白屏", "黑屏"],
+    "finance": {
+      "name": "金融",
+      "description": "金融业务相关问题，包括合同、借款、贷款、签署、交易等",
+      "keywords": [
+        "合同", "借款", "贷款", "签署", "银行", "验证码", "交易", 
+        "账户", "金额", "还款", "放款", "审核", "签约", "授信",
+        "利率", "期限", "本金", "利息", "逾期", "结清", "转账",
+        "上海银行", "借款合同", "金融", "资金", "提现", "充值"
+      ],
+      "severity_default": "medium"
+    },
+    "system": {
+      "name": "系统",
+      "description": "系统Bug、技术问题、接口异常等",
+      "keywords": [
+        "报错", "异常", "崩溃", "失败", "超时", "验证码初始化",
+        "接口", "网络", "服务器", "登录", "加载", "白屏", "黑屏",
+        "转圈", "卡住", "无法", "错误", "bug", "500", "404",
+        "初始化", "系统", "页面", "闪退", "断开"
+      ],
       "severity_default": "high"
-    },
-    "data_issue": {
-      "name": "数据问题",
-      "description": "数据错误、缺失、不一致等问题",
-      "keywords": ["数据", "不一致", "错误", "缺失", "丢失", "重复", "对不上", "不匹配", "同步", "导入", "导出"],
-      "severity_default": "medium"
-    },
-    "business_issue": {
-      "name": "业务问题",
-      "description": "业务流程、规则、配置相关问题",
-      "keywords": ["流程", "审批", "规则", "配置", "设置", "权限", "业务", "操作", "步骤", "办理", "申请", "审核"],
-      "severity_default": "medium"
-    },
-    "user_issue": {
-      "name": "用户问题",
-      "description": "用户使用咨询、操作指导类问题",
-      "keywords": ["怎么", "如何", "能不能", "可以", "怎样", "使用", "操作", "功能", "在哪里", "找不到", "不会用"],
-      "severity_default": "low"
-    },
-    "feature_request": {
-      "name": "功能需求",
-      "description": "新功能建议、改进意见",
-      "keywords": ["建议", "希望", "想要", "新增", "功能", "改进", "优化", "需求", "期待"],
-      "severity_default": "low"
     },
     "other": {
       "name": "其他",
-      "description": "不属于以上分类的问题",
+      "description": "不属于金融和系统分类的其他问题",
       "keywords": [],
       "severity_default": "low"
     }
@@ -41,22 +33,44 @@
     "critical": {
       "name": "严重",
       "description": "系统崩溃、核心功能不可用、影响所有用户",
-      "keywords": ["崩溃", "无法使用", "严重", "紧急", "全部用户"]
+      "keywords": ["崩溃", "无法使用", "严重", "紧急", "全部用户", "宕机"]
     },
     "high": {
       "name": "高",
       "description": "功能异常、数据丢失风险、影响部分用户",
-      "keywords": ["报错", "失败", "无法", "影响", "阻碍"]
+      "keywords": ["报错", "失败", "无法", "影响", "异常", "错误"]
     },
     "medium": {
       "name": "中",
       "description": "一般问题、有临时解决方案",
-      "keywords": ["问题", "异常", "不对", "错误"]
+      "keywords": ["问题", "不对", "提示", "初始化"]
     },
     "low": {
       "name": "低",
-      "description": "咨询类问题、功能建议",
-      "keywords": ["建议", "咨询", "询问", "优化"]
+      "description": "咨询类问题、建议类问题",
+      "keywords": ["咨询", "询问", "建议", "如何", "怎么"]
+    }
+  },
+  "roles": {
+    "customer": {
+      "name": "客户",
+      "description": "提出问题、反馈异常的用户",
+      "patterns": ["客户", "用户"]
+    },
+    "support": {
+      "name": "技术支持",
+      "description": "解决技术问题、排查Bug",
+      "patterns": ["技术", "支持", "IT", "运维"]
+    },
+    "service": {
+      "name": "客服",
+      "description": "回答问题、提供指导",
+      "patterns": ["客服", "服务"]
+    },
+    "business": {
+      "name": "业务人员",
+      "description": "解释业务规则、流程",
+      "patterns": ["业务", "经理", "专员"]
     }
   }
 }

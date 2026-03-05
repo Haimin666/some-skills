@@ -2,11 +2,17 @@
   "id": "",
   "question": "",
   "answer": "",
+  "tags": [],
   "category": "other",
-  "category_name": "其他",
   "confidence": 0.0,
-  "context": "",
-  "source_msg_ids": [],
+  "context": {
+    "questioner": "",
+    "answerer": "",
+    "group_name": "",
+    "has_image": false,
+    "image_desc": "",
+    "source_time": ""
+  },
   "keywords": [],
   "severity": "medium"
 }

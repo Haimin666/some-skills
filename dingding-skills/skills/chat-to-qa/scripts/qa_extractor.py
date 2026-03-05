@@ -1,11 +1,16 @@
 """
-QA Extractor - 从群聊消息中提取 QA 的核心脚本
+QA Extractor - 从群聊消息中提取 QA 的核心脚本（金融场景版）
 
-使用大模型理解上下文，从零散的聊天记录中提取结构化的问答对
+功能：
+1. 理解上下文，从零散聊天中提取 QA
+2. 支持金融场景分类（金融、系统、其他）
+3. 理解人员角色、图片信息
+4. 输出 FastGpt 适配格式
 """
 
 import asyncio
 import json
+import re
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -20,24 +25,34 @@ class ChatMessage:
     msg_id: str
     sender_id: str
     sender_name: str
-    content: str
-    timestamp: datetime
-    chat_id: str
-
+    sender_role: str = "unknown"
+    content: str = ""
+    msg_type: str = "text"
+    pic_url: str = ""
+    create_time: int = 0
+    
     def to_dict(self) -> Dict[str, Any]:
         return {
             "msg_id": self.msg_id,
             "sender_id": self.sender_id,
             "sender_name": self.sender_name,
+            "sender_role": self.sender_role,
             "content": self.content,
-            "timestamp": self.timestamp.isoformat(),
-            "chat_id": self.chat_id,
+            "msg_type": self.msg_type,
+            "pic_url": self.pic_url,
+            "create_time": self.create_time,
         }
-
+    
     def format_for_llm(self) -> str:
         """格式化为 LLM 输入格式"""
-        time_str = self.timestamp.strftime("%H:%M")
-        return f"[{time_str}] {self.sender_name}: {self.content}"
+        time_str = ""
+        if self.create_time:
+            time_str = datetime.fromtimestamp(self.create_time / 1000).strftime("%H:%M")
+        
+        role_label = f"[{self.sender_role}]" if self.sender_role != "unknown" else ""
+        pic_label = " [图片]" if self.pic_url else ""
+        
+        return f"[{time_str}] {self.sender_name}{role_label}: {self.content}{pic_label}"
 
 
 @dataclass
@@ -46,11 +61,10 @@ class QAPair:
     id: str
     question: str
     answer: str
+    tags: List[str]
     category: str
-    category_name: str
     confidence: float
-    context: str
-    source_msg_ids: List[str]
+    context: Dict[str, Any]
     keywords: List[str]
     severity: str
 
@@ -59,35 +73,58 @@ class QAPair:
             "id": self.id,
             "question": self.question,
             "answer": self.answer,
+            "tags": self.tags,
             "category": self.category,
-            "category_name": self.category_name,
             "confidence": self.confidence,
             "context": self.context,
-            "source_msg_ids": self.source_msg_ids,
             "keywords": self.keywords,
             "severity": self.severity,
+        }
+    
+    def to_fastgpt(self) -> Dict[str, Any]:
+        """转换为 FastGpt 格式"""
+        return {
+            "q": self.question,
+            "a": self.answer,
+            "tags": self.tags,
         }
 
 
 class QAExtractor:
     """
-    QA 提取器
-
-    使用大模型从群聊消息中提取结构化 QA
+    QA 提取器（金融场景版）
+    
+    分类标签：
+    - finance: 金融业务问题
+    - system: 系统Bug问题
+    - other: 其他问题
     """
 
     # 分类标签定义
     CATEGORIES = {
-        "system_bug": "系统Bug",
-        "data_issue": "数据问题",
-        "business_issue": "业务问题",
-        "user_issue": "用户问题",
-        "feature_request": "功能需求",
-        "other": "其他",
+        "finance": {
+            "name": "金融",
+            "keywords": [
+                "合同", "借款", "贷款", "签署", "银行", "验证码", "交易",
+                "账户", "金额", "还款", "放款", "审核", "签约", "授信",
+                "利率", "期限", "本金", "利息", "逾期", "结清", "转账",
+                "上海银行", "借款合同", "金融", "资金", "提现", "充值"
+            ]
+        },
+        "system": {
+            "name": "系统",
+            "keywords": [
+                "报错", "异常", "崩溃", "失败", "超时", "验证码初始化",
+                "接口", "网络", "服务器", "登录", "加载", "白屏", "黑屏",
+                "转圈", "卡住", "无法", "错误", "bug", "500", "404",
+                "初始化", "系统", "页面", "闪退", "断开"
+            ]
+        },
+        "other": {
+            "name": "其他",
+            "keywords": []
+        }
     }
-
-    # 严重级别定义
-    SEVERITY_LEVELS = ["critical", "high", "medium", "low"]
 
     def __init__(
         self,
@@ -124,6 +161,7 @@ class QAExtractor:
     async def extract_qa(
         self,
         messages: List[ChatMessage],
+        group_name: str = "金融业务群",
         batch_size: int = 30,
     ) -> Dict[str, Any]:
         """
@@ -131,6 +169,7 @@ class QAExtractor:
 
         Args:
             messages: 聊天消息列表
+            group_name: 群聊名称
             batch_size: 批处理大小
 
         Returns:
@@ -142,73 +181,69 @@ class QAExtractor:
 
         # 分批处理，保留上下文衔接
         for i in range(0, len(messages), batch_size):
-            # 获取当前批次，包含上一批最后 5 条作为上下文
             start = max(0, i - 5) if i > 0 else i
             batch_messages = messages[start:i + batch_size]
-
-            qa_list = await self._process_batch(batch_messages, i // batch_size)
+            
+            qa_list = await self._process_batch(
+                batch_messages, 
+                group_name,
+                i // batch_size
+            )
             all_qa_list.extend(qa_list)
 
-        # 去重（基于问题内容的相似度）
+        # 去重
         all_qa_list = self._deduplicate_qa(all_qa_list)
 
-        # 生成统计信息
+        # 生成统计
         statistics = self._generate_statistics(all_qa_list)
 
         return {
             "qa_list": [qa.to_dict() for qa in all_qa_list],
+            "fastgpt_list": [qa.to_fastgpt() for qa in all_qa_list],
             "statistics": statistics,
         }
 
     async def _process_batch(
         self,
         messages: List[ChatMessage],
+        group_name: str,
         batch_index: int,
     ) -> List[QAPair]:
         """处理一批消息"""
-        # 格式化消息
         formatted_messages = "\n".join([m.format_for_llm() for m in messages])
+        prompt = self._build_extraction_prompt(formatted_messages, group_name)
 
-        # 构建 prompt
-        prompt = self._build_extraction_prompt(formatted_messages)
-
-        # 调用大模型
         try:
             response = await self._call_llm(prompt)
-            qa_list = self._parse_response(response, messages, batch_index)
+            qa_list = self._parse_response(response, messages, group_name, batch_index)
             return qa_list
         except Exception as e:
             print(f"处理批次 {batch_index} 失败: {e}")
             return []
 
-    def _build_extraction_prompt(self, messages: str) -> str:
+    def _build_extraction_prompt(self, messages: str, group_name: str) -> str:
         """构建提取 prompt"""
-        return f"""你是一个专业的客服问答助手。请从以下群聊消息中提取有价值的问答对(QA)。
+        return f"""你是一个专业的金融客服问答助手。请从以下钉钉群聊消息中提取有价值的问答对(QA)。
 
-## 任务说明
-群聊记录是零散的，需要你理解上下文来判断哪些是真正的问答。
-
-## 提取规则
-1. **识别问题**：包含疑问词（怎么、如何、为什么等）、问号、或表达困惑的内容
-2. **识别答案**：回答问题、提供解决方案、解释说明的内容
-3. **理解上下文**：答案可能分散在多条消息中，需要合并理解
-4. **质量要求**：忽略纯闲聊、表情包；问题要清晰完整，答案要准确有用
+## 背景
+这是金融业务场景的群聊，消息可能是零散的，需要理解上下文来判断问答关系。
 
 ## 分类标签
-- system_bug: 系统Bug（报错、崩溃、功能异常）
-- data_issue: 数据问题（数据错误、缺失、不一致）
-- business_issue: 业务问题（流程、规则、权限）
-- user_issue: 用户问题（使用咨询、操作指导）
-- feature_request: 功能需求（建议、改进意见）
-- other: 其他问题
+- 金融(finance): 金融业务问题，涉及合同、借款、贷款、签署、交易、验证码、银行等
+- 系统(system): 系统Bug或技术问题，涉及报错、异常、崩溃、失败、超时、初始化等
+- 其他(other): 不属于以上分类的问题
 
-## 严重级别
-- critical: 严重问题，系统崩溃、核心功能不可用
-- high: 高优先级，功能异常、影响业务
-- medium: 中等优先级，一般问题
-- low: 低优先级，咨询类问题
+## 提取规则
+1. **理解上下文**: 答案可能分散在多条消息中，需要合并
+2. **识别角色**: 区分客户（提问者）和技术支持/客服（回答者）
+3. **处理图片**: 如果有图片标记，在 context 中说明
+4. **质量要求**: 问题要清晰完整，答案要准确有用
+5. **多标签**: 可以同时属于"金融"和"系统"，用 tags 数组表示
 
-## 群聊消息
+## 群聊信息
+群名: {group_name}
+
+## 聊天记录
 {messages}
 
 ## 输出格式
@@ -219,17 +254,20 @@ class QAExtractor:
     {{
       "question": "整理后的问题",
       "answer": "整理后的答案",
-      "category": "分类标签",
+      "tags": ["金融", "系统"],
+      "category": "主分类(finance/system/other)",
       "confidence": 0.95,
-      "context": "上下文说明",
+      "questioner": "提问者名称",
+      "answerer": "回答者名称",
+      "has_image": false,
       "keywords": ["关键词"],
-      "severity": "严重级别"
+      "severity": "严重级别(critical/high/medium/low)"
     }}
   ]
 }}
 ```
 
-如果消息中没有有价值的问答，输出空列表：{{"qa_list": []}}"""
+如果没有有价值的问答，输出: {{"qa_list": []}}"""
 
     async def _call_llm(self, prompt: str) -> str:
         """调用大模型"""
@@ -238,7 +276,7 @@ class QAExtractor:
             "messages": [
                 {
                     "role": "system",
-                    "content": "你是一个专业的客服问答助手，擅长从群聊对话中提取有价值的问答信息。"
+                    "content": "你是一个专业的金融客服问答助手，擅长从群聊对话中提取有价值的问答信息。"
                 },
                 {"role": "user", "content": prompt},
             ],
@@ -258,34 +296,60 @@ class QAExtractor:
         self,
         response: str,
         messages: List[ChatMessage],
+        group_name: str,
         batch_index: int,
     ) -> List[QAPair]:
         """解析 LLM 响应"""
         qa_list = []
 
         try:
-            # 提取 JSON
-            import re
             json_match = re.search(r'\{[\s\S]*\}', response)
             if json_match:
                 data = json.loads(json_match.group())
                 raw_qa_list = data.get("qa_list", [])
 
                 for i, item in enumerate(raw_qa_list):
+                    # 确定分类和标签
                     category = item.get("category", "other")
+                    tags = item.get("tags", [])
+                    
+                    # 如果没有标签，根据分类添加
+                    if not tags:
+                        category_info = self.CATEGORIES.get(category, {})
+                        category_name = category_info.get("name", "其他")
+                        tags = [category_name]
+                    
+                    # 构建上下文
+                    source_time = ""
+                    if messages:
+                        first_msg = messages[0]
+                        if first_msg.create_time:
+                            source_time = datetime.fromtimestamp(
+                                first_msg.create_time / 1000
+                            ).strftime("%Y-%m-%d %H:%M")
+                    
+                    context = {
+                        "questioner": item.get("questioner", ""),
+                        "answerer": item.get("answerer", ""),
+                        "group_name": group_name,
+                        "has_image": item.get("has_image", False),
+                        "image_desc": item.get("image_desc", ""),
+                        "source_time": source_time,
+                    }
+                    
                     qa = QAPair(
                         id=f"qa_{batch_index:03d}_{i:03d}",
                         question=item.get("question", ""),
                         answer=item.get("answer", ""),
+                        tags=tags,
                         category=category,
-                        category_name=self.CATEGORIES.get(category, "其他"),
                         confidence=item.get("confidence", 0.8),
-                        context=item.get("context", ""),
-                        source_msg_ids=[m.msg_id for m in messages],
+                        context=context,
                         keywords=item.get("keywords", []),
                         severity=item.get("severity", "medium"),
                     )
                     qa_list.append(qa)
+                    
         except json.JSONDecodeError as e:
             print(f"JSON 解析失败: {e}")
 
@@ -297,7 +361,6 @@ class QAExtractor:
         unique_qa = []
 
         for qa in qa_list:
-            # 简单的去重：基于问题前 50 字符
             question_key = qa.question[:50].strip()
             if question_key not in seen_questions:
                 seen_questions.add(question_key)
@@ -311,22 +374,29 @@ class QAExtractor:
 
         category_counts = Counter([qa.category for qa in qa_list])
         severity_counts = Counter([qa.severity for qa in qa_list])
+        
+        # 统计标签
+        all_tags = []
+        for qa in qa_list:
+            all_tags.extend(qa.tags)
+        tag_counts = Counter(all_tags)
 
         return {
             "total_count": len(qa_list),
             "by_category": dict(category_counts),
             "by_severity": dict(severity_counts),
+            "by_tags": dict(tag_counts),
             "generated_at": datetime.now().isoformat(),
         }
 
 
-# 便捷函数
 async def extract_qa_from_messages(
     messages: List[ChatMessage],
     api_base_url: str,
     api_key: str,
     model: str = "gpt-4",
+    group_name: str = "金融业务群",
 ) -> Dict[str, Any]:
-    """从消息提取 QA"""
+    """便捷函数：从消息提取 QA"""
     async with QAExtractor(api_base_url, api_key, model) as extractor:
-        return await extractor.extract_qa(messages)
+        return await extractor.extract_qa(messages, group_name)
