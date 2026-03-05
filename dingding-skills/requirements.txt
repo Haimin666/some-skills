@@ -1,6 +1,23 @@
-# 鷻加钉钉 SDK
-alibabacloud-dingtalk>=2.0.0
+# 钉钉群聊 QA 智能分析系统 - 依赖列表
 
+# Web 框架
+fastapi>=0.109.0
+uvicorn>=0.27.0
+
+# HTTP 客户端
+aiohttp>=3.9.0
+httpx>=0.25.0
+requests>=2.31.0
+
+# 异步支持
+asyncio>=3.4.3
+
+# 数据处理
+pydantic>=2.5.0
+python-dotenv>=1.0.0
+
+# 钉钉 SDK
+alibabacloud-dingtalk>=2.0.0
 alibabacloud-tea-openapi>=0.4.0
 alibabacloud-tea-util>=0.4.0
 
@@ -8,3 +25,11 @@ alibabacloud-tea-util>=0.4.0
 schedule>=1.2.0
 apscheduler>=3.10.0
 
+# 终端输出
+rich>=13.7.0
+
+# 重试
+tenacity>=8.2.0
+
+# 日志
+loguru>=0.7.0
