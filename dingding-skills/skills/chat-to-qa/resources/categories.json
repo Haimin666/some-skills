@@ -1,0 +1,62 @@
+{
+  "categories": {
+    "system_bug": {
+      "name": "系统Bug",
+      "description": "系统功能异常、报错、崩溃等问题",
+      "keywords": ["报错", "错误", "崩溃", "异常", "bug", "500", "404", "无法", "失败", "卡住", "闪退", "白屏", "黑屏"],
+      "severity_default": "high"
+    },
+    "data_issue": {
+      "name": "数据问题",
+      "description": "数据错误、缺失、不一致等问题",
+      "keywords": ["数据", "不一致", "错误", "缺失", "丢失", "重复", "对不上", "不匹配", "同步", "导入", "导出"],
+      "severity_default": "medium"
+    },
+    "business_issue": {
+      "name": "业务问题",
+      "description": "业务流程、规则、配置相关问题",
+      "keywords": ["流程", "审批", "规则", "配置", "设置", "权限", "业务", "操作", "步骤", "办理", "申请", "审核"],
+      "severity_default": "medium"
+    },
+    "user_issue": {
+      "name": "用户问题",
+      "description": "用户使用咨询、操作指导类问题",
+      "keywords": ["怎么", "如何", "能不能", "可以", "怎样", "使用", "操作", "功能", "在哪里", "找不到", "不会用"],
+      "severity_default": "low"
+    },
+    "feature_request": {
+      "name": "功能需求",
+      "description": "新功能建议、改进意见",
+      "keywords": ["建议", "希望", "想要", "新增", "功能", "改进", "优化", "需求", "期待"],
+      "severity_default": "low"
+    },
+    "other": {
+      "name": "其他",
+      "description": "不属于以上分类的问题",
+      "keywords": [],
+      "severity_default": "low"
+    }
+  },
+  "severity_levels": {
+    "critical": {
+      "name": "严重",
+      "description": "系统崩溃、核心功能不可用、影响所有用户",
+      "keywords": ["崩溃", "无法使用", "严重", "紧急", "全部用户"]
+    },
+    "high": {
+      "name": "高",
+      "description": "功能异常、数据丢失风险、影响部分用户",
+      "keywords": ["报错", "失败", "无法", "影响", "阻碍"]
+    },
+    "medium": {
+      "name": "中",
+      "description": "一般问题、有临时解决方案",
+      "keywords": ["问题", "异常", "不对", "错误"]
+    },
+    "low": {
+      "name": "低",
+      "description": "咨询类问题、功能建议",
+      "keywords": ["建议", "咨询", "询问", "优化"]
+    }
+  }
+}
