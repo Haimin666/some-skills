@@ -1,237 +1,62 @@
-"""
-FastGPT 知识库导入器
-
-适配 FastGPT 的 API 格式，支持创建知识库集合和数据导入
-"""
-
+# encoding: utf-8
+import requests
 import json
-from typing import List, Dict, Any, Optional
-from datetime import datetime
-from pathlib import Path
-import aiohttp
-from rich.console import Console
+import os
+import urllib.parse  # 引入 urllib.parse
 
-console = Console()
+# 1. 设置 API 地址和认证信息
+url = "https://alg-fastgpt.corp.shiqiao.com/api/core/dataset/collection/create/localFile"
+api_key = "xxx"  # 请替换为你的真实 API Key
 
+headers = {
+    "Authorization": f"Bearer {api_key}"
+}
 
-class FastGptImporter:
-    """
-    FastGPT 知识库导入器
-    
-    FastGPT API 文档: https://doc.fastgpt.in/
-    """
-    
-    def __init__(
-        self,
-        api_key: str,
-        api_url: str = "https://api.fastgpt.in",
-        dataset_id: str = "",
-    ):
-        self.api_key = api_key
-        self.api_url = api_url.rstrip("/")
-        self.dataset_id = dataset_id
-        self._session: Optional[aiohttp.ClientSession] = None
-    
-    async def __aenter__(self):
-        await self._init_session()
-        return self
-    
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        await self.close()
-    
-    async def _init_session(self):
-        if self._session is None or self._session.closed:
-            self._session = aiohttp.ClientSession(
-                headers={
-                    "Authorization": f"Bearer {self.api_key}",
-                    "Content-Type": "application/json",
-                },
-                timeout=aiohttp.ClientTimeout(total=120),
-            )
-    
-    async def close(self):
-        if self._session and not self._session.closed:
-            await self._session.close()
-    
-    async def import_data(
-        self,
-        qa_list: List[Dict[str, Any]],
-    ) -> Dict[str, Any]:
-        """
-        导入 QA 数据到 FastGPT 知识库
-        
-        FastGPT API 格式：
-        POST /api/v1/dataset/data/list
-        {
-            "datasetId": "xxx",
-            "data": [
-                {
-                    "q": "问题",
-                    "a": "答案",
-                    "tags": ["标签1", "标签2"]
-                }
-            ]
+# 2. 准备文件路径
+file_path = "/Users/lbc/Downloads/答疑文档更新2026-3-5.csv"
+
+# 3. 准备 data 字段的数据
+payload = {
+    "datasetId": "69a9186ad9aab1e5fb351c37",
+    "parentId": None,
+    "trainingType": "qa",
+    "chunkSize": 512,
+    "chunkSplitter": "",
+    "qaPrompt": "第一列为q第二列为a",
+    "metadata": {},
+    "chunkSettingMode": "auto"
+}
+
+try:
+    # 4. 关键步骤：手动对文件名进行 URL 编码
+    # 获取原始文件名
+    original_filename = os.path.basename(file_path)
+    # 将中文文件名编码为 %E7%AD%94%E7%96%91... 格式
+    # safe='' 表示连特殊字符也编码，通常文件名建议保留空格不编码，或者根据后端习惯调整
+    encoded_filename = urllib.parse.quote(original_filename)
+
+    print(f"原始文件名: {original_filename}")
+    print(f"编码后文件名: {encoded_filename}")
+
+    with open(file_path, 'rb') as f:
+        # 在 files 参数中使用编码后的文件名
+        # requests 看到是 ASCII 字符串，就不会再添加额外的 charset 头信息
+        files = {
+            'file': (encoded_filename, f, 'text/csv')
         }
-        
-        Args:
-            qa_list: QA 列表，格式: [{"q": "", "a": "", "tags": []}]
-        
-        Returns:
-            导入结果
-        """
-        if not qa_list:
-            return {"total": 0, "inserted": 0}
-        
-        await self._init_session()
-        
-        url = f"{self.api_url}/api/v1/dataset/data/list"
-        
-        payload = {
-            "datasetId": self.dataset_id,
-            "data": qa_list
-        }
-        
-        try:
-            async with self._session.post(url, json=payload) as response:
-                response.raise_for_status()
-                result = await response.json()
-                
-                console.print(f"[green]成功导入 {len(qa_list)} 条 QA 到 FastGPT[/green]")
-                
-                return {
-                    "total": len(qa_list),
-                    "result": result
-                }
-        except Exception as e:
-            console.print(f"[red]FastGPT 导入失败: {e}[/red]")
-            raise
-    
-    async def create_collection(
-        self,
-        name: str,
-        description: str = "",
-    ) -> Dict[str, Any]:
-        """
-        创建知识库集合
-        
-        Args:
-            name: 集合名称
-            description: 集合描述
-        
-        Returns:
-            创建结果
-        """
-        await self._init_session()
-        
-        url = f"{self.api_url}/api/v1/dataset/collection/create"
-        
-        payload = {
-            "datasetId": self.dataset_id,
-            "name": name,
-            "description": description or f"钉钉群聊 QA - {datetime.now().strftime('%Y-%m-%d')}"
-        }
-        
-        try:
-            async with self._session.post(url, json=payload) as response:
-                response.raise_for_status()
-                result = await response.json()
-                
-                console.print(f"[green]创建知识库集合成功: {result.get('data', {}).get('_id', '')}[/green]")
-                
-                return result
-        except Exception as e:
-            console.print(f"[red]创建集合失败: {e}[/red]")
-            raise
-    
-    async def import_to_collection(
-        self,
-        collection_id: str,
-        qa_list: List[Dict[str, Any]],
-    ) -> Dict[str, Any]:
-        """
-        导入数据到指定集合
-        
-        Args:
-            collection_id: 集合 ID
-            qa_list: QA 列表
-        
-        Returns:
-            导入结果
-        """
-        if not qa_list:
-            return {"total": 0, "inserted": 0}
-        
-        await self._init_session()
-        
-        url = f"{self.api_url}/api/v1/dataset/data/list"
-        
-        payload = {
-            "datasetId": self.dataset_id,
-            "collectionId": collection_id,
-            "data": qa_list
-        }
-        
-        try:
-            async with self._session.post(url, json=payload) as response:
-                response.raise_for_status()
-                result = await response.json()
-                
-                console.print(f"[green]成功导入 {len(qa_list)} 条 QA[/green]")
-                
-                return {
-                    "total": len(qa_list),
-                    "result": result
-                }
-        except Exception as e:
-            console.print(f"[red]导入失败: {e}[/red]")
-            raise
 
-
-def format_qa_for_fastgpt(qa_data: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """
-    格式化 QA 数据为 FastGPT 格式
-    
-    Args:
-        qa_data: QA 数据（包含 qa_list 或 fastgpt_list）
-    
-    Returns:
-        FastGPT 格式的 QA 列表
-    """
-    # 优先使用 fastgpt_list
-    if "fastgpt_list" in qa_data:
-        return qa_data["fastgpt_list"]
-    
-    # 否则从 qa_list 转换
-    qa_list = qa_data.get("qa_list", [])
-    return [
-        {
-            "q": qa.get("question", ""),
-            "a": qa.get("answer", ""),
-            "tags": qa.get("tags", []),
+        # data 字段转换
+        data = {
+            'data': json.dumps(payload, ensure_ascii=False)
         }
-        for qa in qa_list
-    ]
 
+        # 5. 发送请求
+        response = requests.post(url, headers=headers, data=data, files=files)
 
-async def import_to_fastgpt(
-    qa_data: Dict[str, Any],
-    api_key: str,
-    dataset_id: str,
-    api_url: str = "https://api.fastgpt.in",
-) -> Dict[str, Any]:
-    """
-    便捷函数: 导入 QA 到 FastGPT
-    
-    Args:
-        qa_data: QA 数据
-        api_key: FastGPT API Key
-        dataset_id: 数据集 ID
-        api_url: FastGPT API URL
-    
-    Returns:
-        导入结果
-    """
-    fastgpt_list = format_qa_for_fastgpt(qa_data)
-    
-    async with FastGptImporter(api_key, api_url, dataset_id) as importer:
-        return await importer.import_data(fastgpt_list)
+        print(f"Status Code: {response.status_code}")
+        print("Response Body:", response.text)
+
+except FileNotFoundError:
+    print(f"错误：找不到文件 {file_path}")
+except Exception as e:
+    print(f"请求发生错误: {e}")
